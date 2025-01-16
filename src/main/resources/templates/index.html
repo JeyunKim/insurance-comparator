@@ -6,9 +6,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <div th:if="${error}" class="alert alert-info" role="alert">
-            <span th:utext="${error}"></span>
-        </div>
+        <div th:if="${error}" class="alert alert-info" th:utext="${htmlError ? error : #strings.escapeXml(error)}"></div>
         <h1 class="mb-4">Insurance Plan Finder</h1>
 
         <div class="row">

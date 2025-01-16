@@ -4,6 +4,7 @@ import com.insurance.model.domain.InsurancePlan;
 import com.insurance.model.domain.StateMarketplace;
 import com.insurance.model.dto.PlanSearchCriteria;
 import com.insurance.service.InsuranceService;
+import com.insurance.service.LocationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -12,13 +13,15 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Comparator;
-import java.util.stream.Collectors;
+import java.time.Year;
+import java.util.Arrays;
 
 @Controller
 @RequiredArgsConstructor
 @Slf4j
 public class InsuranceController {
     private final InsuranceService insuranceService;
+    private final LocationService locationService;
 
     @GetMapping("/")
     public String index() {
@@ -37,6 +40,13 @@ public class InsuranceController {
                 return "redirect:/";
             }
 
+            LocationService.LocationInfo locationInfo = locationService.getLocationInfo(zipCode);
+            String state = locationInfo.getState();
+
+            if (Arrays.stream(StateMarketplace.values()).anyMatch(s -> s.name().equals(state))) {
+                return handleStateMarketplaceError(zipCode, model);
+            }
+
             return processPlansRequest(zipCode, page, size, sort, searchCriteria, model);
         } catch (Exception e) {
             log.error("Error fetching insurance plans: {}", e.getMessage(), e);
@@ -47,21 +57,23 @@ public class InsuranceController {
 
     private String processPlansRequest(String zipCode, int page, int size,
             String sort, PlanSearchCriteria searchCriteria, Model model) {
-        try {
-            List<InsurancePlan> allPlans = insuranceService.getInsurancePlans(zipCode, 2024, searchCriteria);
+        List<InsurancePlan> allPlans = insuranceService.getInsurancePlans(zipCode, Year.now().getValue(),
+                searchCriteria);
 
-            if (StringUtils.hasText(sort)) {
-                sortPlans(allPlans, sort);
-            }
-
-            addPaginationAttributes(model, allPlans, page, size);
-            model.addAttribute("searchCriteria", searchCriteria);
-            model.addAttribute("sort", sort);
-
-            return "plans";
-        } catch (Exception e) {
-            return handleStateMarketplaceError(e, zipCode, model);
+        if (allPlans.isEmpty()) {
+            model.addAttribute("error", "No plans found for this ZIP code.");
+            return "index";
         }
+
+        if (StringUtils.hasText(sort)) {
+            sortPlans(allPlans, sort);
+        }
+
+        addPaginationAttributes(model, allPlans, page, size);
+        model.addAttribute("searchCriteria", searchCriteria);
+        model.addAttribute("sort", sort);
+
+        return "plans";
     }
 
     private void sortPlans(List<InsurancePlan> plans, String sort) {
@@ -111,18 +123,22 @@ public class InsuranceController {
         model.addAttribute("totalPages", totalPages);
     }
 
-    private String handleStateMarketplaceError(Exception e, String zipCode, Model model) {
-        if (e.getMessage().contains("state is not a valid marketplace state")) {
-            StateMarketplace marketplace = insuranceService.findMarketplaceByZipCode(zipCode);
-            if (marketplace != null) {
-                model.addAttribute("error",
-                        String.format(
-                                "This state uses %s. Please visit <a href='%s' target='_blank'>%s</a> to view available plans.",
-                                marketplace.getMarketplaceName(),
-                                marketplace.getWebsiteUrl(),
-                                marketplace.getWebsiteUrl()));
-            }
+    private String handleStateMarketplaceError(String zipCode, Model model) {
+        try {
+            LocationService.LocationInfo locationInfo = locationService.getLocationInfo(zipCode);
+            String state = locationInfo.getState();
+            StateMarketplace marketplace = StateMarketplace.valueOf(state);
+            String message = String.format(
+                    "The state %s has its own marketplace. Please visit <a href='%s' target='_blank'>%s</a>",
+                    state, marketplace.getWebsiteUrl(), marketplace.getWebsiteUrl());
+
+            model.addAttribute("error", message);
+            model.addAttribute("htmlError", true); // Thymeleaf에서 HTML 렌더링을 위한 플래그
+            return "index";
+        } catch (Exception e) {
+            log.error("Error in handleStateMarketplaceError for ZIP code {}: {}", zipCode, e.getMessage());
+            model.addAttribute("error", "An error occurred. Please try again.");
+            return "index";
         }
-        return "index";
     }
 }

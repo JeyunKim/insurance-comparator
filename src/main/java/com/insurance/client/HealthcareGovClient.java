@@ -33,13 +33,8 @@ public class HealthcareGovClient {
     private String baseUrl;
 
     public InsurancePlan[] getInsurancePlans(String zipCode, int year) {
-        try {
-            LocationService.LocationInfo locationInfo = locationService.getLocationInfo(zipCode);
-            return fetchAllPlans(zipCode, year, locationInfo);
-        } catch (Exception e) {
-            log.error("Error fetching insurance plans for ZIP {}: {}", zipCode, e.getMessage(), e);
-            throw new RuntimeException("Failed to fetch insurance plans: " + e.getMessage(), e);
-        }
+        LocationService.LocationInfo locationInfo = locationService.getLocationInfo(zipCode);
+        return fetchAllPlans(zipCode, year, locationInfo);
     }
 
     private InsurancePlan[] fetchAllPlans(String zipCode, int year, LocationService.LocationInfo locationInfo) {
@@ -65,22 +60,30 @@ public class HealthcareGovClient {
                     entity,
                     InsurancePlansResponse.class);
 
-            if (response.getBody() != null && response.getBody().getPlans() != null) {
-                List<InsurancePlan> plans = response.getBody().getPlans();
-                totalPlans = response.getBody().getTotal();
-                log.info("Response received - Status: {}, Plans in this batch: {}, Total plans in response: {}",
-                        response.getStatusCode(),
-                        plans.size(),
-                        totalPlans);
-
-                allPlans.addAll(plans);
-                hasMore = allPlans.size() < totalPlans;
-                offset += limit;
-                log.info("Cumulative plans collected: {}", allPlans.size());
-            } else {
-                log.warn("No plans received in response. Response body: {}", response.getBody());
+            InsurancePlansResponse responseBody = response.getBody();
+            if (responseBody == null) {
+                log.warn("Received null response body");
                 hasMore = false;
+                continue;
             }
+
+            List<InsurancePlan> plans = responseBody.getPlans();
+            if (plans == null || plans.isEmpty()) {
+                log.warn("No plans in response body");
+                hasMore = false;
+                continue;
+            }
+
+            totalPlans = responseBody.getTotal();
+            log.info("Response received - Status: {}, Plans in this batch: {}, Total plans: {}",
+                    response.getStatusCode(),
+                    plans.size(),
+                    totalPlans);
+
+            allPlans.addAll(plans);
+            hasMore = allPlans.size() < totalPlans;
+            offset += limit;
+            log.info("Cumulative plans collected: {}", allPlans.size());
         }
 
         log.info("Finished fetching plans - Total requests: {}, Final plan count: {} (Expected: {})",

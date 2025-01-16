@@ -19,7 +19,8 @@ InsuranceComparator is an application that leverages the HealthCare.gov Marketpl
 ### Environment Setup
 1. Create a `.env` file in the project root directory
 2. Copy the contents from `.env.template`
-3. Replace the placeholder values with your actual API keys:
+3. Request an API key from https://developer.cms.gov/marketplace-api/key-request.html
+4. Replace the placeholder values with your actual API keys:
 
 HEALTHCARE_GOV_API_KEY=your_api_key_here
 
