@@ -1,4 +1,27 @@
+spring:
+  application:
+    name: insurance-comparator
+  thymeleaf:
+    cache: false
+    enabled: true
+    prefix: classpath:/templates/
+    suffix: .html
+
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: always
+
 healthcare:
   gov:
     api:
-      key: ${HEALTHCARE_GOV_API_KEY} 
+      base-url: ${HEALTHCARE_GOV_API_BASE_URL:https://marketplace.api.healthcare.gov}
+      key: ${HEALTHCARE_GOV_API_KEY}
+
+logging:
+  level:
+    root: INFO
+    com.insurance: DEBUG
+    org.springframework.web: DEBUG 

@@ -1,8 +1,6 @@
 package com.insurance.model.domain;
 
 import lombok.Getter;
-import java.util.Arrays;
-import java.util.Optional;
 
 @Getter
 public enum StateMarketplace {

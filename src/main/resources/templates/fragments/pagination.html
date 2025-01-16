@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <div th:fragment="pagination" class="d-flex justify-content-between align-items-center mt-4">
+        <div class="form-inline">
+            <select class="form-select" style="width: auto;" 
+                    onchange="window.location.href=updateUrlWithPageSize(this.value)">
+                <option value="10" th:selected="${pageSize == 10}">10 plans per page</option>
+                <option value="20" th:selected="${pageSize == 20}">20 plans per page</option>
+                <option value="50" th:selected="${pageSize == 50}">50 plans per page</option>
+                <option value="100" th:selected="${pageSize == 100}">100 plans per page</option>
+            </select>
+        </div>
+        
+        <nav aria-label="Page navigation">
+            <ul class="pagination mb-0">
+                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                    <a class="page-link" th:href="@{/plans(
+                        zipCode=${param.zipCode},
+                        page=0,
+                        size=${pageSize},
+                        insuranceCompany=${param.insuranceCompany},
+                        planType=${param.planType},
+                        metalLevel=${param.metalLevel},
+                        premiumMin=${param.premiumMin},
+                        premiumMax=${param.premiumMax},
+                        deductibleMin=${param.deductibleMin},
+                        deductibleMax=${param.deductibleMax},
+                        moopMin=${param.moopMin},
+                        moopMax=${param.moopMax}
+                    )}">&laquo;</a>
+                </li>
+                
+                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                    <a class="page-link" th:href="@{/plans(
+                        zipCode=${param.zipCode},
+                        page=${currentPage - 1},
+                        size=${pageSize},
+                        insuranceCompany=${param.insuranceCompany},
+                        planType=${param.planType},
+                        metalLevel=${param.metalLevel},
+                        premiumMin=${param.premiumMin},
+                        premiumMax=${param.premiumMax},
+                        deductibleMin=${param.deductibleMin},
+                        deductibleMax=${param.deductibleMax},
+                        moopMin=${param.moopMin},
+                        moopMax=${param.moopMax}
+                    )}">&lt;</a>
+                </li>
+                
+                <li class="page-item" 
+                    th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}"
+                    th:classappend="${pageNum == currentPage} ? 'active'">
+                    <a class="page-link" th:href="@{/plans(
+                        zipCode=${param.zipCode},
+                        page=${pageNum},
+                        size=${pageSize},
+                        insuranceCompany=${param.insuranceCompany},
+                        planType=${param.planType},
+                        metalLevel=${param.metalLevel},
+                        premiumMin=${param.premiumMin},
+                        premiumMax=${param.premiumMax},
+                        deductibleMin=${param.deductibleMin},
+                        deductibleMax=${param.deductibleMax},
+                        moopMin=${param.moopMin},
+                        moopMax=${param.moopMax}
+                    )}" th:text="${pageNum + 1}"></a>
+                </li>
+                
+                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                    <a class="page-link" th:href="@{/plans(
+                        zipCode=${param.zipCode},
+                        page=${currentPage + 1},
+                        size=${pageSize},
+                        insuranceCompany=${param.insuranceCompany},
+                        planType=${param.planType},
+                        metalLevel=${param.metalLevel},
+                        premiumMin=${param.premiumMin},
+                        premiumMax=${param.premiumMax},
+                        deductibleMin=${param.deductibleMin},
+                        deductibleMax=${param.deductibleMax},
+                        moopMin=${param.moopMin},
+                        moopMax=${param.moopMax}
+                    )}">&gt;</a>
+                </li>
+                
+                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                    <a class="page-link" th:href="@{/plans(
+                        zipCode=${param.zipCode},
+                        page=${totalPages - 1},
+                        size=${pageSize},
+                        insuranceCompany=${param.insuranceCompany},
+                        planType=${param.planType},
+                        metalLevel=${param.metalLevel},
+                        premiumMin=${param.premiumMin},
+                        premiumMax=${param.premiumMax},
+                        deductibleMin=${param.deductibleMin},
+                        deductibleMax=${param.deductibleMax},
+                        moopMin=${param.moopMin},
+                        moopMax=${param.moopMax}
+                    )}">&raquo;</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</body>
+</html> 

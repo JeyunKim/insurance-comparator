@@ -2,44 +2,263 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Insurance Plans</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
+    <th:block th:replace="~{fragments/table :: tableStyles}"></th:block>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .filter-section {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            padding: 0.5rem 1rem;
+        }
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.1);
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+        }
+        .badge {
+            padding: 0.5em 1em;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .badge-metal-bronze { background-color: #cd7f32; color: white; }
+        .badge-metal-silver { background-color: #c0c0c0; color: white; }
+        .badge-metal-gold { background-color: #ffd700; color: black; }
+        .badge-metal-platinum { background-color: #e5e4e2; color: black; }
+        .autoComplete_wrapper {
+            width: 100%;
+            position: relative;
+        }
+        
+        .autoComplete_list {
+            padding: 0.5rem 0;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            background-color: white;
+            position: absolute;
+            width: 100%;
+            z-index: 1000;
+            margin-top: 0.25rem;
+        }
+        
+        .autoComplete_result {
+            margin: 0.15rem 0;
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+        }
+        
+        .autoComplete_result:hover {
+            background-color: #f8f9fa;
+        }
+        
+        mark {
+            padding: 0;
+            background: transparent;
+            color: #0d6efd;
+            font-weight: normal;
+        }
+    </style>
 </head>
-<body>
-    <div class="container mt-5">
-        <h1 class="mb-4">Insurance Plans</h1>
+<body class="py-4">
+    <div class="container">
+        <h2 class="mb-4">Insurance Plans</h2>
         
-        <div th:if="${plans.empty}" class="alert alert-info">
-            No insurance plans found.
+        <!-- 필터 섹션 -->
+        <div class="card filter-section mb-4">
+            <form th:action="@{/plans}" method="get" class="row g-3">
+                <input type="hidden" name="zipCode" th:value="${param.zipCode}">
+                
+                <div class="col-md-4">
+                    <label class="form-label">Insurance Company</label>
+                    <input type="text" class="form-control" 
+                           list="insuranceCompanies" 
+                           id="insuranceCompanyInput" 
+                           name="insuranceCompany"
+                           th:value="${searchCriteria.insuranceCompany}" 
+                           placeholder="Search insurance company...">
+                    <datalist id="insuranceCompanies">
+                        <option th:each="company : ${#sets.toSet(plans.![insuranceCompany])}" 
+                                th:value="${company}"></option>
+                    </datalist>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label">Plan Type</label>
+                    <select class="form-select" name="planType">
+                        <option value="">All Types</option>
+                        <option value="HMO" th:selected="${searchCriteria.planType == 'HMO'}">HMO</option>
+                        <option value="PPO" th:selected="${searchCriteria.planType == 'PPO'}">PPO</option>
+                        <option value="EPO" th:selected="${searchCriteria.planType == 'EPO'}">EPO</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label">Metal Level</label>
+                    <select class="form-select" name="metalLevel">
+                        <option value="">All Levels</option>
+                        <option value="BRONZE" th:selected="${searchCriteria.metalLevel == 'BRONZE'}">Bronze</option>
+                        <option value="SILVER" th:selected="${searchCriteria.metalLevel == 'SILVER'}">Silver</option>
+                        <option value="GOLD" th:selected="${searchCriteria.metalLevel == 'GOLD'}">Gold</option>
+                        <option value="PLATINUM" th:selected="${searchCriteria.metalLevel == 'PLATINUM'}">Platinum</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Premium Range</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="premiumMin" placeholder="Min" th:value="${searchCriteria.premiumMin}">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" name="premiumMax" placeholder="Max" th:value="${searchCriteria.premiumMax}">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Deductible Range</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="deductibleMin" placeholder="Min" th:value="${searchCriteria.deductibleMin}">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" name="deductibleMax" placeholder="Max" th:value="${searchCriteria.deductibleMax}">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Max Out of Pocket Range</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="moopMin" placeholder="Min" th:value="${searchCriteria.moopMin}">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" name="moopMax" placeholder="Max" th:value="${searchCriteria.moopMax}">
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary me-2">Apply Filters</button>
+                    <a th:href="@{/plans(zipCode=${param.zipCode})}" class="btn btn-secondary">Clear Filters</a>
+                </div>
+            </form>
         </div>
-        
-        <div th:if="${!plans.empty}" class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Insurance Company</th>
-                        <th>Plan Type</th>
-                        <th>Metal Level</th>
-                        <th>Premium</th>
-                        <th>Deductible</th>
-                        <th>Max Out of Pocket</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="plan : ${plans}">
-                        <td th:text="${plan.name}"></td>
-                        <td th:text="${plan.insuranceCompany}"></td>
-                        <td th:text="${plan.planType}"></td>
-                        <td th:text="${plan.metalLevel}"></td>
-                        <td th:text="${plan.premium}"></td>
-                        <td th:text="${plan.deductible}"></td>
-                        <td th:text="${plan.maxOutOfPocket}"></td>
-                    </tr>
-                </tbody>
-            </table>
+
+        <!-- 테이블 위에 추가 -->
+        <div th:if="${error}" class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close float-end" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-        
-        <a href="/" class="btn btn-primary mt-3">Back to Search</a>
+
+        <!-- 플랜 테이블 -->
+        <div class="card">
+            <div th:if="${plans.isEmpty()}" class="card-body text-center py-5">
+                <i class="bi bi-search mb-3" style="font-size: 2rem; color: #6c757d;"></i>
+                <h5 class="text-muted">No plans found</h5>
+                <p class="text-muted mb-0">
+                    Try adjusting your search filters or 
+                    <a href="#" onclick="return clearFilters()" class="text-primary text-decoration-none">clear all filters</a>
+                </p>
+            </div>
+            
+            <div class="table-responsive" th:if="${!plans.isEmpty()}">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th th:replace="~{fragments/table :: sortableHeader('name', 'Plan Name')}"></th>
+                            <th th:replace="~{fragments/table :: sortableHeader('insuranceCompany', 'Insurance Company')}"></th>
+                            <th th:replace="~{fragments/table :: plainHeader('Plan Type')}"></th>
+                            <th th:replace="~{fragments/table :: plainHeader('Metal Level')}"></th>
+                            <th th:replace="~{fragments/table :: sortableHeader('premiumValue', 'Premium')}"></th>
+                            <th th:replace="~{fragments/table :: sortableHeader('deductibleValue', 'Deductible')}"></th>
+                            <th th:replace="~{fragments/table :: sortableHeader('maxOutOfPocketValue', 'Max Out of Pocket')}"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="plan : ${plans}">
+                            <td>
+                                <a href="#" class="text-decoration-none fw-medium" 
+                                   th:text="${T(com.insurance.util.PlanNameFormatter).formatPlanName(plan.name)}">
+                                </a>
+                            </td>
+                            <td th:text="${plan.insuranceCompany}"></td>
+                            <td th:text="${plan.planType}"></td>
+                            <td>
+                                <span class="badge" th:classappend="'badge-metal-' + ${#strings.toLowerCase(plan.metalLevel)}" 
+                                      th:text="${plan.metalLevel}"></span>
+                            </td>
+                            <td th:text="${'$' + #numbers.formatDecimal(plan.premiumValue, 1, 2)}"></td>
+                            <td>
+                                <span th:text="${plan.deductible == null || plan.deductible == '$0.00' ? '$0.00' : plan.deductible}">
+                                </span>
+                            </td>
+                            <td th:text="${'$' + #numbers.formatDecimal(plan.maxOutOfPocketValue, 1, 2)}"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div th:replace="~{fragments/pagination :: pagination}"></div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+    </script>
+
+    <script th:inline="javascript">
+    function updateUrlWithPageSize(size) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('size', size);
+        url.searchParams.set('page', '0');
+        
+        const params = /*[[${param}]]*/ {};
+        for (let key in params) {
+            if (key !== 'size' && key !== 'page') {
+                url.searchParams.set(key, params[key]);
+            }
+        }
+        
+        return url.toString();
+    }
+
+    function clearFilters() {
+        const currentUrl = new URL(window.location.href);
+        const zipCode = currentUrl.searchParams.get('zipCode');
+        const newUrl = `${currentUrl.origin}/plans?zipCode=${zipCode}`;
+        window.location.href = newUrl;
+        return false;  // prevent default anchor behavior
+    }
+    </script>
 </body>
 </html> 

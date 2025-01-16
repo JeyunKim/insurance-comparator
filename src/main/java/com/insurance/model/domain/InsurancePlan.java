@@ -22,7 +22,7 @@ public class InsurancePlan {
     private String metalLevel;
 
     @JsonProperty("premium")
-    private String premium;
+    private Double premium;
 
     @JsonProperty("deductibles")
     private List<Deductible> deductibles;
@@ -59,33 +59,47 @@ public class InsurancePlan {
     }
 
     public String getPremium() {
-        return premium != null ? "$" + premium : "N/A";
+        return premium != null ? String.format("$%.2f", premium) : "N/A";
     }
 
     public Double getPremiumValue() {
-        if (premium == null)
-            return null;
-        return Double.parseDouble(premium);
+        return premium;
     }
 
     public String getDeductible() {
-        if (deductibles == null || deductibles.isEmpty())
-            return "N/A";
-        Deductible deductible = deductibles.stream()
+        return formatAmount(getDeductibleValue());
+    }
+
+    public Double getDeductibleValue() {
+        if (deductibles == null || deductibles.isEmpty()) {
+            return 0.0;
+        }
+        return deductibles.stream()
                 .filter(d -> "Combined Medical and Drug EHB Deductible".equals(d.getType()))
+                .map(Deductible::getAmount)
                 .findFirst()
-                .orElse(null);
-        return deductible != null && deductible.getAmount() != null ? String.format("$%.2f", deductible.getAmount())
-                : "N/A";
+                .orElse(0.0);
     }
 
     public String getMaxOutOfPocket() {
-        if (moops == null || moops.isEmpty())
-            return "N/A";
-        Moop moop = moops.stream()
+        return formatAmount(getMaxOutOfPocketValue());
+    }
+
+    public Double getMaxOutOfPocketValue() {
+        if (moops == null || moops.isEmpty()) {
+            return null;
+        }
+        return moops.stream()
                 .filter(m -> "Maximum Out of Pocket for Medical and Drug EHB Benefits (Total)".equals(m.getType()))
+                .map(Moop::getAmount)
                 .findFirst()
                 .orElse(null);
-        return moop != null && moop.getAmount() != null ? String.format("$%.2f", moop.getAmount()) : "N/A";
+    }
+
+    private String formatAmount(Double amount) {
+        if (amount == null) {
+            return "N/A";
+        }
+        return String.format("$%.2f", amount);
     }
 }

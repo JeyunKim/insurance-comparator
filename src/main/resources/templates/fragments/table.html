@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <th:block th:fragment="tableStyles">
+        <style>
+            .table > thead > tr > th {
+                padding: 0.75rem !important;
+                vertical-align: middle;
+                border-bottom: 2px solid #dee2e6;
+                background-color: #f8f9fa;
+            }
+            
+            .sort-column {
+                display: inline-flex;
+                align-items: center;
+                white-space: nowrap;
+            }
+            
+            .sort-icons {
+                display: inline-flex;
+                align-items: center;
+                margin-left: 0.5rem;
+            }
+            
+            .sort-icons a {
+                color: #6c757d;
+                padding: 0.25rem;
+                border-radius: 0.25rem;
+                transition: all 0.2s;
+                text-decoration: none;
+                opacity: 0.5;
+            }
+            
+            .sort-icons a:hover {
+                color: #0d6efd;
+                background-color: rgba(13, 110, 253, 0.1);
+                opacity: 1;
+            }
+            
+            .sort-icons i {
+                font-size: 1.1rem;
+            }
+            
+            .sort-active {
+                opacity: 1 !important;
+                color: #0d6efd !important;
+            }
+        </style>
+    </th:block>
+</head>
+<body>
+    <!-- 정렬 가능한 헤더 컬럼 fragment -->
+    <th th:fragment="sortableHeader(fieldName, displayName)">
+        <div class="sort-column">
+            <span th:text="${displayName}"></span>
+            <div class="sort-icons">
+                <a th:href="@{/plans(
+                    zipCode=${param.zipCode}, 
+                    sort=${param.sort != null && param.sort[0] == fieldName + ',asc' ? fieldName + ',desc' : fieldName + ',asc'}, 
+                    insuranceCompany=${param.insuranceCompany}, 
+                    planType=${param.planType}, 
+                    metalLevel=${param.metalLevel}, 
+                    premiumMin=${param.premiumMin}, 
+                    premiumMax=${param.premiumMax}, 
+                    deductibleMin=${param.deductibleMin}, 
+                    deductibleMax=${param.deductibleMax}, 
+                    moopMin=${param.moopMin}, 
+                    moopMax=${param.moopMax}, 
+                    size=${pageSize})}"
+                   th:class="${param.sort != null && (param.sort[0] == fieldName + ',asc' || param.sort[0] == fieldName + ',desc')} ? 'sort-active' : ''">
+                    <i class="bi" th:classappend="${param.sort != null && param.sort[0] == fieldName + ',asc'} ? 'bi-sort-down' : 'bi-sort-up'"></i>
+                </a>
+            </div>
+        </div>
+    </th>
+
+    <!-- 일반 헤더 컬럼 fragment -->
+    <th th:fragment="plainHeader(displayName)">
+        <div class="sort-column">
+            <span th:text="${displayName}"></span>
+        </div>
+    </th>
+</body>
+</html> 

@@ -2,161 +2,124 @@ package com.insurance.client;
 
 import com.insurance.model.domain.InsurancePlan;
 import com.insurance.model.dto.InsurancePlansResponse;
+import com.insurance.service.LocationService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.MediaType;
-import java.util.HashMap;
-import java.util.Map;
-import com.insurance.service.LocationService;
 import java.util.ArrayList;
-import org.springframework.web.client.HttpClientErrorException;
-import com.insurance.model.domain.StateMarketplace;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class HealthcareGovClient {
 
     private final RestTemplate restTemplate;
     private final LocationService locationService;
-    private final String baseUrl;
-    private final String apiKey;
 
-    public HealthcareGovClient(
-            RestTemplate restTemplate,
-            LocationService locationService,
-            @Value("${healthcare.gov.api.base-url:https://marketplace.api.healthcare.gov}") String baseUrl,
-            @Value("${healthcare.gov.api.key}") String apiKey) {
-        this.restTemplate = restTemplate;
-        this.locationService = locationService;
-        this.baseUrl = baseUrl;
-        this.apiKey = apiKey;
-        log.info("HealthcareGovClient initialized with baseUrl: {}", baseUrl);
-        log.info("API Key present: {}", apiKey != null && !apiKey.isEmpty());
-    }
+    @Value("${healthcare.gov.api.key}")
+    private String apiKey;
+
+    @Value("${healthcare.gov.api.base-url}")
+    private String baseUrl;
 
     public InsurancePlan[] getInsurancePlans(String zipCode, int year) {
-        String url = baseUrl + "/api/v1/plans/search";
-        LocationService.LocationInfo locationInfo = locationService.getLocationInfo(zipCode);
-
-        // Validate location info
-        if (locationInfo.getState() == null || locationInfo.getState().isEmpty() ||
-                locationInfo.getCountyFips() == null || locationInfo.getCountyFips().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Location information not available for ZIP code " + zipCode +
-                            ". Please try a different ZIP code in our service area.");
-        }
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("apikey", apiKey);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // Create request body with all required fields and default values
-        Map<String, Object> requestBody = new HashMap<>();
-
-        // Household information
-        requestBody.put("household", new HashMap<String, Object>() {
-            {
-                put("income", 52000.0); // Double type for income
-                put("has_married_couple", false); // Boolean type
-                put("people", new ArrayList<>() {
-                    {
-                        add(new HashMap<String, Object>() {
-                            {
-                                put("age", 35);
-                                put("aptc_eligible", true); // Boolean type
-                                put("gender", "Female");
-                                put("uses_tobacco", false); // Boolean type
-                                put("relationship", "Self");
-                            }
-                        });
-                    }
-                });
-                put("effective_date", "2024-02-01");
-            }
-        });
-
-        // Market and enrollment period
-        requestBody.put("market", "Individual");
-        requestBody.put("enrollment_period", "Special");
-
-        // Location information
-        requestBody.put("place", new HashMap<String, Object>() {
-            {
-                put("zipcode", zipCode);
-                put("state", locationInfo.getState());
-                put("county", locationInfo.getCounty());
-                put("countyfips", locationInfo.getCountyFips());
-            }
-        });
-
-        // Coverage and preferences
-        requestBody.put("year", year);
-        requestBody.put("coverage", "Medical");
-        requestBody.put("dental_coverage", false); // Boolean type
-        requestBody.put("catastrophic", true); // Boolean type
-        requestBody.put("order_by", "premium");
-        requestBody.put("limit", 50);
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
         try {
-            log.debug("Requesting insurance plans with URL: {} and body: {}", url, requestBody);
-            ResponseEntity<String> rawResponse = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    entity,
-                    String.class);
+            LocationService.LocationInfo locationInfo = locationService.getLocationInfo(zipCode);
+            return fetchAllPlans(zipCode, year, locationInfo);
+        } catch (Exception e) {
+            log.error("Error fetching insurance plans for ZIP {}: {}", zipCode, e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch insurance plans: " + e.getMessage(), e);
+        }
+    }
 
-            // Split the entire response into lines for logging
-            String[] lines = rawResponse.getBody().split(",");
-            for (String line : lines) {
-                if (line.contains("deductible") || line.contains("moop") || line.contains("out_of_pocket")) {
-                    log.debug("Found relevant line: {}", line);
-                }
-            }
+    private InsurancePlan[] fetchAllPlans(String zipCode, int year, LocationService.LocationInfo locationInfo) {
+        List<InsurancePlan> allPlans = new ArrayList<>();
+        int offset = 0;
+        int limit = 10;
+        boolean hasMore = true;
+        int requestCount = 0;
+        int totalPlans = 0;
+
+        while (hasMore) {
+            requestCount++;
+            log.info("Making request #{} for ZIP {} (offset: {}, limit: {})", requestCount, zipCode, offset, limit);
+
+            Map<String, Object> requestBody = buildRequestBody(zipCode, year, locationInfo, offset, limit);
+            HttpEntity<Map<String, Object>> entity = buildHttpEntity(requestBody);
+
+            log.debug("Request body: {}", requestBody);
 
             ResponseEntity<InsurancePlansResponse> response = restTemplate.exchange(
-                    url,
+                    baseUrl + "/api/v1/plans/search",
                     HttpMethod.POST,
                     entity,
                     InsurancePlansResponse.class);
-            log.debug("Parsed API Response: {}", response.getBody());
-            return response.getBody().getPlans().toArray(new InsurancePlan[0]);
-        } catch (HttpClientErrorException.BadRequest e) {
-            // Handle 400 Bad Request error
-            if (e.getMessage().contains("invalid zipcode")) {
-                log.error("Location information not available for ZIP code: {}", zipCode);
-                throw new IllegalArgumentException(
-                        "Sorry, we currently don't have coverage information for ZIP code " + zipCode +
-                                ". Please try a different ZIP code in our service area.");
-            } else if (e.getMessage().contains("not a valid marketplace state")) {
-                String state = locationInfo.getState();
-                StateMarketplace stateMarketplace = StateMarketplace.findByStateCode(state);
-                if (stateMarketplace != null) {
-                    throw new IllegalArgumentException(
-                            String.format("%s has its own Marketplace. %s is your state's Marketplace. " +
-                                    "Visit <a href='%s' target='_blank'>%s's website</a>.",
-                                    stateMarketplace.getStateName(),
-                                    stateMarketplace.getMarketplaceName(),
-                                    stateMarketplace.getWebsiteUrl(),
-                                    stateMarketplace.getStateName()));
-                }
-                log.error("State is not supported: {}", state);
-                throw new IllegalArgumentException(
-                        "Sorry, " + state + " is not currently supported by the Healthcare Marketplace. " +
-                                "Please try a ZIP code in one of our supported states (e.g., Arizona).");
+
+            if (response.getBody() != null && response.getBody().getPlans() != null) {
+                List<InsurancePlan> plans = response.getBody().getPlans();
+                totalPlans = response.getBody().getTotal();
+                log.info("Response received - Status: {}, Plans in this batch: {}, Total plans in response: {}",
+                        response.getStatusCode(),
+                        plans.size(),
+                        totalPlans);
+
+                allPlans.addAll(plans);
+                hasMore = allPlans.size() < totalPlans;
+                offset += limit;
+                log.info("Cumulative plans collected: {}", allPlans.size());
+            } else {
+                log.warn("No plans received in response. Response body: {}", response.getBody());
+                hasMore = false;
             }
-            log.error("Error fetching insurance plans for ZIP {}: {}", zipCode, e.getMessage());
-            throw new RuntimeException("Failed to fetch insurance plans: " + e.getMessage());
+        }
+
+        log.info("Finished fetching plans - Total requests: {}, Final plan count: {} (Expected: {})",
+                requestCount, allPlans.size(), totalPlans);
+        return allPlans.toArray(new InsurancePlan[0]);
+    }
+
+    private Map<String, Object> buildRequestBody(String zipCode, int year,
+            LocationService.LocationInfo locationInfo, int offset, int limit) {
+        Map<String, Object> place = new HashMap<>();
+        place.put("zipcode", zipCode.trim());
+        place.put("state", locationInfo.getState().trim());
+        place.put("countyfips", locationInfo.getCountyFips().trim());
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("year", year);
+        requestBody.put("place", place);
+        requestBody.put("market", "Individual");
+        requestBody.put("offset", offset);
+        requestBody.put("limit", limit);
+        requestBody.put("sort", "premium");
+
+        return requestBody;
+    }
+
+    private HttpEntity<Map<String, Object>> buildHttpEntity(Map<String, Object> requestBody) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", apiKey);
+        return new HttpEntity<>(requestBody, headers);
+    }
+
+    public int getTotalPlansCount(String zipCode, int year) {
+        try {
+            InsurancePlan[] plans = getInsurancePlans(zipCode, year);
+            return plans.length;
         } catch (Exception e) {
-            log.error("Error fetching insurance plans for ZIP {}: {}", zipCode, e.getMessage());
-            throw new RuntimeException("Failed to fetch insurance plans", e);
+            log.error("Error fetching total plans count: {}", e.getMessage(), e);
+            return 0;
         }
     }
 }
