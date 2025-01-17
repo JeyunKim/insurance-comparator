@@ -152,7 +152,7 @@
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Max Out of Pocket Range</label>
+                    <label class="form-label">Out of Pocket Maximum</label>
                     <div class="input-group">
                         <input type="number" class="form-control" name="moopMin" placeholder="Min" th:value="${searchCriteria.moopMin}">
                         <span class="input-group-text">-</span>
@@ -201,9 +201,8 @@
                     <tbody>
                         <tr th:each="plan : ${plans}">
                             <td>
-                                <a href="#" class="text-decoration-none fw-medium" 
-                                   th:text="${T(com.insurance.util.PlanNameFormatter).formatPlanName(plan.name)}">
-                                </a>
+                                <a th:href="@{'/plans/' + ${plan.planId}(planName=${plan.name},insuranceCompany=${plan.insuranceCompany})}"
+                                   th:text="${@planNameFormatter.formatPlanName(plan.name)}">Plan Name</a>
                             </td>
                             <td th:text="${plan.insuranceCompany}"></td>
                             <td th:text="${plan.planType}"></td>

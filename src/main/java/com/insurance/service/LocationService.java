@@ -1,15 +1,22 @@
 package com.insurance.service;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import lombok.extern.slf4j.Slf4j;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import lombok.Data;
-import lombok.AllArgsConstructor;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Service for handling location-related operations
+ * Manages ZIP code validation and location information retrieval
+ */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -69,6 +76,13 @@ public class LocationService {
             Map.entry("Wisconsin", "WI"),
             Map.entry("Wyoming", "WY"));
 
+    /**
+     * Retrieves location information for a given ZIP code
+     * 
+     * @param zipCode ZIP code to look up
+     * @return LocationInfo containing state and county information
+     * @throws RuntimeException if location information cannot be retrieved
+     */
     public LocationInfo getLocationInfo(String zipCode) {
         try {
             // First, get basic location info from Zippopotam API
@@ -153,6 +167,9 @@ public class LocationService {
         }
     }
 
+    /**
+     * Location information container class
+     */
     @Data
     @AllArgsConstructor
     public static class LocationInfo {

@@ -1,31 +1,44 @@
 package com.insurance.util;
 
+import org.springframework.stereotype.Component;
+
+/**
+ * Utility class for formatting insurance plan names and details
+ * Provides methods for standardizing and cleaning plan information
+ */
+@Component
 public class PlanNameFormatter {
-    private PlanNameFormatter() {
+    public PlanNameFormatter() {
     }
 
-    public static String formatPlanName(String fullName) {
-        if (fullName == null)
+    /**
+     * Formats a plan name according to standard conventions
+     * 
+     * @param planName Raw plan name to format
+     * @return Formatted plan name
+     */
+    public String formatPlanName(String planName) {
+        if (planName == null)
             return "";
 
-        // 괄호 내용 제거
-        fullName = fullName.replaceAll("\\(.*?\\)", "").trim();
+        // Remove content in parentheses
+        planName = planName.replaceAll("\\(.*?\\)", "").trim();
 
-        // 특수 문자 이후 내용 제거
+        // Remove content after special characters
         String[] stopChars = { ":", "+", "$" };
-        int firstStop = fullName.length();
+        int firstStop = planName.length();
 
         for (String stopChar : stopChars) {
-            int index = fullName.indexOf(stopChar);
+            int index = planName.indexOf(stopChar);
             if (index > 0 && index < firstStop) {
                 firstStop = index;
             }
         }
 
-        // 기본 이름만 추출
-        String baseName = fullName.substring(0, firstStop).trim();
+        // Extract base name only
+        String baseName = planName.substring(0, firstStop).trim();
 
-        // 연속된 공백 제거
+        // Remove consecutive whitespace
         return baseName.replaceAll("\\s+", " ");
     }
 }

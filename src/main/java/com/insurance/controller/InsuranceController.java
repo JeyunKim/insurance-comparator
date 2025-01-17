@@ -1,33 +1,56 @@
 package com.insurance.controller;
 
-import com.insurance.model.domain.InsurancePlan;
-import com.insurance.model.domain.StateMarketplace;
-import com.insurance.model.dto.PlanSearchCriteria;
-import com.insurance.service.InsuranceService;
-import com.insurance.service.LocationService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Year;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
-import java.util.Comparator;
-import java.time.Year;
-import java.util.Arrays;
 
+import com.insurance.client.HealthcareGovClient;
+import com.insurance.model.domain.InsurancePlan;
+import com.insurance.model.domain.InsurancePlanDetails;
+import com.insurance.model.domain.StateMarketplace;
+import com.insurance.model.dto.PlanSearchCriteria;
+import com.insurance.service.InsuranceService;
+import com.insurance.service.LocationService;
+import com.insurance.util.PlanNameFormatter;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Controller for handling insurance plan related requests
+ * Provides endpoints for searching and viewing insurance plans
+ */
 @Controller
 @RequiredArgsConstructor
 @Slf4j
 public class InsuranceController {
     private final InsuranceService insuranceService;
     private final LocationService locationService;
+    private final HealthcareGovClient healthcareGovClient;
+    private final PlanNameFormatter planNameFormatter;
 
     @GetMapping("/")
     public String index() {
         return "index";
     }
 
+    /**
+     * Handles the request to get insurance plans based on search criteria
+     * 
+     * @param zipCode          ZIP code for plan search
+     * @param page             Current page number
+     * @param size             Number of items per page
+     * @param insuranceCompany Insurance company filter
+     * @param criteria         Additional search criteria
+     * @param model            Spring MVC model
+     * @return View name for plan results
+     */
     @GetMapping("/plans")
     public String getPlans(@RequestParam String zipCode,
             @RequestParam(defaultValue = "0") int page,
@@ -72,6 +95,10 @@ public class InsuranceController {
         addPaginationAttributes(model, allPlans, page, size);
         model.addAttribute("searchCriteria", searchCriteria);
         model.addAttribute("sort", sort);
+
+        allPlans.forEach(plan -> plan.setName(planNameFormatter.formatPlanName(plan.getName())));
+
+        model.addAttribute("plans", allPlans);
 
         return "plans";
     }
@@ -133,12 +160,23 @@ public class InsuranceController {
                     state, marketplace.getWebsiteUrl(), marketplace.getWebsiteUrl());
 
             model.addAttribute("error", message);
-            model.addAttribute("htmlError", true); // Thymeleaf에서 HTML 렌더링을 위한 플래그
+            model.addAttribute("htmlError", true); // Flag for HTML rendering in Thymeleaf
             return "index";
         } catch (Exception e) {
             log.error("Error in handleStateMarketplaceError for ZIP code {}: {}", zipCode, e.getMessage());
             model.addAttribute("error", "An error occurred. Please try again.");
             return "index";
         }
+    }
+
+    @GetMapping("/plans/{planId}")
+    public String getPlanDetails(@PathVariable String planId,
+            @RequestParam String planName,
+            @RequestParam String insuranceCompany,
+            Model model) {
+        InsurancePlanDetails planDetails = healthcareGovClient.getPlanById(planId, planName, insuranceCompany);
+        planDetails.setPlanName(planNameFormatter.formatPlanName(planDetails.getPlanName()));
+        model.addAttribute("plan", planDetails);
+        return "plan-details";
     }
 }

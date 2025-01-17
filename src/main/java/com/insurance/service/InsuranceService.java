@@ -1,23 +1,46 @@
 package com.insurance.service;
 
-import com.insurance.client.HealthcareGovClient;
-import com.insurance.model.domain.InsurancePlan;
-import com.insurance.model.domain.StateMarketplace;
-import com.insurance.model.dto.PlanSearchCriteria;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.insurance.client.HealthcareGovClient;
+import com.insurance.model.domain.InsurancePlan;
+import com.insurance.model.domain.StateMarketplace;
+import com.insurance.model.dto.PlanSearchCriteria;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Service for managing insurance plan operations
+ * Handles business logic for plan searching, filtering, and processing
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class InsuranceService {
         private final HealthcareGovClient healthcareGovClient;
 
+        // TODO: [Enhancement] Add search functionality by insurance company name
+        // - Create a new method to search plans by insurance company name
+        // - Add case-insensitive partial matching for company names
+        // - Implement caching for frequently searched insurance companies
+        // - Consider adding autocomplete functionality for company names
+        // Example method signature:
+        // public List<InsurancePlan> searchPlansByInsuranceCompany(String companyName,
+        // PlanSearchCriteria criteria)
+
+        /**
+         * Retrieves and filters insurance plans based on search criteria
+         * 
+         * @param zipCode  ZIP code for plan search
+         * @param criteria Search criteria for filtering plans
+         * @return Filtered list of insurance plans
+         */
         public List<InsurancePlan> getInsurancePlans(String zipCode, int year, PlanSearchCriteria criteria) {
                 InsurancePlan[] plans = healthcareGovClient.getInsurancePlans(zipCode, year);
 
@@ -41,14 +64,14 @@ public class InsuranceService {
 
                 log.info("Total plans before filtering: {}", filteredPlans.size());
 
-                // Filter by Metal Level
+                // Filter plans by Metal Level
                 if (StringUtils.hasText(criteria.getMetalLevel())) {
                         filteredPlans = filteredPlans.stream()
                                         .filter(plan -> plan.getMetalLevel().equalsIgnoreCase(criteria.getMetalLevel()))
                                         .collect(Collectors.toList());
                 }
 
-                // Filter by Insurance Company
+                // Filter plans by Insurance Company
                 if (StringUtils.hasText(criteria.getInsuranceCompany())) {
                         filteredPlans = filteredPlans.stream()
                                         .filter(plan -> plan.getInsuranceCompany().toLowerCase()
@@ -56,7 +79,7 @@ public class InsuranceService {
                                         .collect(Collectors.toList());
                 }
 
-                // Filter by Plan Type
+                // Filter plans by Plan Type
                 if (StringUtils.hasText(criteria.getPlanType())) {
                         filteredPlans = filteredPlans.stream()
                                         .filter(plan -> plan.getPlanType().equals(criteria.getPlanType()))

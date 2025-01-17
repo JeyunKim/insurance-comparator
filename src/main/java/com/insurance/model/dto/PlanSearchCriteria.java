@@ -4,6 +4,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Data Transfer Object for insurance plan search criteria
+ * Contains all possible filter parameters for plan searches
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -11,7 +15,7 @@ public class PlanSearchCriteria {
     private String sortBy;
     private String sortDirection = "asc"; // Default value
 
-    // Filters
+    // Search filters
     private String insuranceCompany;
     private String planType;
     private String metalLevel;
