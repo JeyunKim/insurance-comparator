@@ -93,7 +93,7 @@
     <div class="container">
         <h2 class="mb-4">Insurance Plans</h2>
         
-        <!-- 필터 섹션 -->
+        <!-- filter section -->
         <div class="card filter-section mb-4">
             <form th:action="@{/plans}" method="get" class="row g-3">
                 <input type="hidden" name="zipCode" th:value="${param.zipCode}">
@@ -167,14 +167,43 @@
             </form>
         </div>
 
-        <!-- 테이블 위에 추가 -->
+        <div class="compare-section" style="margin: 20px 0; 
+                                          padding: 15px; 
+                                          background: white; 
+                                          border-radius: 8px; 
+                                          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                                          min-height: 100px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 1.1rem; margin: 0; color: #1a1a1a;">Selected Plans for Comparison (Max 3 plans)</h3>
+                <button id="compareButton" 
+                        style="padding: 8px 16px; 
+                               background: #007AFF; 
+                               color: white; 
+                               border: none; 
+                               border-radius: 6px; 
+                               cursor: pointer;
+                               transition: opacity 0.2s;"
+                        disabled>
+                    Compare Plans
+                </button>
+            </div>
+            <div id="selectedPlans" style="display: flex; 
+                                          gap: 10px; 
+                                          margin-top: 15px; 
+                                          flex-wrap: wrap;
+                                          min-height: 40px;">
+                <!-- Selected plans will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- add error message -->
         <div th:if="${error}" class="alert alert-danger" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
             <span th:text="${error}"></span>
             <button type="button" class="btn-close float-end" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
 
-        <!-- 플랜 테이블 -->
+        <!-- plans table -->
         <div class="card">
             <div th:if="${plans.isEmpty()}" class="card-body text-center py-5">
                 <i class="bi bi-search mb-3" style="font-size: 2rem; color: #6c757d;"></i>
@@ -189,6 +218,7 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
+                            <th>Compare</th>
                             <th th:replace="~{fragments/table :: sortableHeader('name', 'Plan Name')}"></th>
                             <th th:replace="~{fragments/table :: sortableHeader('insuranceCompany', 'Insurance Company')}"></th>
                             <th th:replace="~{fragments/table :: plainHeader('Plan Type')}"></th>
@@ -200,6 +230,23 @@
                     </thead>
                     <tbody>
                         <tr th:each="plan : ${plans}">
+                            <td style="padding-right: 16px;">
+                                <button 
+                                    th:data-plan-id="${plan.planId}"
+                                    th:data-plan-name="${plan.name}"
+                                    onclick="togglePlanSelection(this.dataset.planId, this.dataset.planName)"
+                                    class="compare-btn"
+                                    style="padding: 6px 12px; 
+                                           background: transparent;
+                                           color: #666;
+                                           border: 1px solid #ccc;
+                                           border-radius: 6px;
+                                           cursor: pointer;
+                                           font-size: 0.875rem;
+                                           transition: all 0.2s ease;">
+                                    Compare
+                                </button>
+                            </td>
                             <td>
                                 <a th:href="@{'/plans/' + ${plan.planId}(planName=${plan.name},insuranceCompany=${plan.insuranceCompany})}"
                                    th:text="${@planNameFormatter.formatPlanName(plan.name)}">Plan Name</a>
@@ -220,10 +267,58 @@
                     </tbody>
                 </table>
             </div>
-        </div>
 
-        <!-- 페이지네이션 -->
-        <div th:replace="~{fragments/pagination :: pagination}"></div>
+            <!-- pagination -->
+            <div class="pagination-container" style="display: flex; 
+                                                  justify-content: space-between; 
+                                                  align-items: center; 
+                                                  margin: 20px;
+                                                  padding: 0 20px;">
+                <!-- Plans per page selector -->
+                <div class="plans-per-page">
+                    <select onchange="window.location.href=updateUrlWithPageSize(this.value)" 
+                            style="padding: 8px 12px; 
+                                   border-radius: 6px; 
+                                   border: 1px solid #dee2e6;
+                                   background-color: white;
+                                   color: #495057;
+                                   cursor: pointer;
+                                   font-size: 0.9rem;">
+                        <option value="10" th:selected="${pageSize == 10 || pageSize == null}">Show 10 plans</option>
+                        <option value="20" th:selected="${pageSize == 20}">Show 20 plans</option>
+                        <option value="50" th:selected="${pageSize == 50}">Show 50 plans</option>
+                        <option value="100" th:selected="${pageSize == 100}">Show 100 plans</option>
+                    </select>
+                </div>
+
+                <!-- Page numbers -->
+                <div class="pagination" style="display: flex; 
+                                             gap: 4px; 
+                                             align-items: center;
+                                             background: white;
+                                             padding: 8px;
+                                             border-radius: 8px;
+                                             box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <!-- Previous -->
+                    <a th:if="${currentPage > 1}"
+                       th:href="@{/plans(zipCode=${param.zipCode[0]}, page=${currentPage - 1}, size=${pageSize}, sort=${param.sort})}"
+                       style="text-decoration: none; color: #007AFF; padding: 6px 12px; border-radius: 4px;">←</a>
+
+                    <!-- Page numbers -->
+                    <th:block th:each="i : ${#numbers.sequence(1, totalPages)}">
+                        <a th:href="@{/plans(zipCode=${param.zipCode[0]}, page=${i}, size=${pageSize}, sort=${param.sort})}"
+                           th:text="${i}"
+                           th:style="${currentPage == i} ? 'background: #007AFF; color: white;' : 'color: #007AFF;'"
+                           style="text-decoration: none; padding: 6px 12px; border-radius: 4px;"></a>
+                    </th:block>
+
+                    <!-- Next -->
+                    <a th:if="${currentPage < totalPages}"
+                       th:href="@{/plans(zipCode=${param.zipCode[0]}, page=${currentPage + 1}, size=${pageSize}, sort=${param.sort})}"
+                       style="text-decoration: none; color: #007AFF; padding: 6px 12px; border-radius: 4px;">→</a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -236,28 +331,153 @@
     </script>
 
     <script th:inline="javascript">
-    function updateUrlWithPageSize(size) {
-        const url = new URL(window.location.href);
-        url.searchParams.set('size', size);
-        url.searchParams.set('page', '0');
-        
-        const params = /*[[${param}]]*/ {};
-        for (let key in params) {
-            if (key !== 'size' && key !== 'page') {
-                url.searchParams.set(key, params[key]);
-            }
-        }
-        
-        return url.toString();
-    }
+        function updateUrlWithPageSize(size) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('size', size);
 
-    function clearFilters() {
-        const currentUrl = new URL(window.location.href);
-        const zipCode = currentUrl.searchParams.get('zipCode');
-        const newUrl = `${currentUrl.origin}/plans?zipCode=${zipCode}`;
-        window.location.href = newUrl;
-        return false;  // prevent default anchor behavior
-    }
+            // keep the current page number when changing the page size
+            const currentPage = /*[[${currentPage}]]*/ 0;
+            url.searchParams.set('page', currentPage);
+
+            const params = /*[[${param}]]*/ {};
+            for (let key in params) {
+                if (key !== 'size' && key !== 'page') {
+                    url.searchParams.set(key, params[key]);
+                }
+            }
+            
+            return url.toString();
+        }
+
+        function clearFilters() {
+            const currentUrl = new URL(window.location.href);
+            const zipCode = currentUrl.searchParams.get('zipCode');
+            const newUrl = `${currentUrl.origin}/plans?zipCode=${zipCode}`;
+            window.location.href = newUrl;
+            return false;  // prevent default anchor behavior
+        }
+    </script>
+
+    <script>
+        // Change the selected plans info to a structure that can be used to display the plan names
+        const selectedPlansInfo = JSON.parse(localStorage.getItem('selectedPlansInfo') || '{}');
+        const selectedPlans = new Set(Object.keys(selectedPlansInfo));
+        const compareButton = document.getElementById('compareButton');
+        const selectedPlansContainer = document.getElementById('selectedPlans');
+        const MAX_PLANS = 3;
+
+        // Initialize the UI based on stored selections
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update compare button state
+            compareButton.disabled = selectedPlans.size < 2;
+            
+            // Restore selected plan chips
+            selectedPlans.forEach(planId => {
+                const planName = selectedPlansInfo[planId];
+                if (planName) {
+                    const btn = document.querySelector(`button[data-plan-id="${planId}"]`);
+                    if (btn) {
+                        btn.style.background = '#4CAF50';
+                        btn.style.color = 'white';
+                        btn.style.borderColor = '#4CAF50';
+                    }
+                    addSelectedPlanChip(planId, planName);
+                }
+            });
+
+            // Update all button states
+            document.querySelectorAll('.compare-btn').forEach(btn => {
+                if (!selectedPlans.has(btn.dataset.planId) && selectedPlans.size >= MAX_PLANS) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                }
+            });
+        });
+
+        function togglePlanSelection(planId, planName) {
+            const btn = document.querySelector(`button[data-plan-id="${planId}"]`);
+            
+            if (selectedPlans.has(planId)) {
+                selectedPlans.delete(planId);
+                delete selectedPlansInfo[planId];
+                const chip = document.getElementById(`selected-${planId}`);
+                if (chip) chip.remove();
+                if (btn) {
+                    btn.style.background = 'transparent';
+                    btn.style.color = '#666';
+                    btn.style.borderColor = '#ccc';
+                }
+            } else if (selectedPlans.size < MAX_PLANS) {
+                selectedPlans.add(planId);
+                selectedPlansInfo[planId] = planName;
+                addSelectedPlanChip(planId, planName);
+                if (btn) {
+                    btn.style.background = '#4CAF50';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = '#4CAF50';
+                }
+            } else {
+                alert('You can compare up to 3 plans at a time');
+                return;
+            }
+            
+            // Save to localStorage with plan names
+            localStorage.setItem('selectedPlansInfo', JSON.stringify(selectedPlansInfo));
+            
+            compareButton.disabled = selectedPlans.size < 2;
+            
+            // Update all buttons
+            document.querySelectorAll('.compare-btn').forEach(btn => {
+                if (!selectedPlans.has(btn.dataset.planId) && selectedPlans.size >= MAX_PLANS) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                } else {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
+            });
+        }
+
+        function addSelectedPlanChip(planId, planName) {
+            const chip = document.createElement('div');
+            chip.id = `selected-${planId}`;
+            chip.style.cssText = `
+                background: #f5f5f7; 
+                padding: 6px 12px; 
+                border-radius: 16px; 
+                display: flex; 
+                align-items: center; 
+                gap: 8px;
+                height: 32px;  /* added fixed height */
+                margin: 2px 0;
+            `;
+            chip.innerHTML = `
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${planName}</span>
+                <button onclick="togglePlanSelection('${planId}', '${planName}')" 
+                        style="border: none; 
+                               background: none; 
+                               cursor: pointer; 
+                               color: #666;
+                               padding: 4px;
+                               display: flex;
+                               align-items: center;
+                               justify-content: center;
+                               min-width: 20px;">✕</button>
+            `;
+            selectedPlansContainer.appendChild(chip);
+        }
+
+        compareButton.addEventListener('click', () => {
+            const planIds = Array.from(selectedPlans).join(',');
+            window.location.href = `/plans/compare?ids=${planIds}`;
+        });
+
+        // Clear selections when leaving compare page
+        window.addEventListener('beforeunload', function(e) {
+            if (window.location.pathname === '/plans/compare') {
+                localStorage.removeItem('selectedPlansInfo');
+            }
+        });
     </script>
 </body>
 </html> 

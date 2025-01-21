@@ -53,7 +53,7 @@ public class InsuranceController {
      */
     @GetMapping("/plans")
     public String getPlans(@RequestParam String zipCode,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String sort,
             @ModelAttribute PlanSearchCriteria searchCriteria,
@@ -70,7 +70,7 @@ public class InsuranceController {
                 return handleStateMarketplaceError(zipCode, model);
             }
 
-            return processPlansRequest(zipCode, page, size, sort, searchCriteria, model);
+            return processPlansRequest(zipCode, page - 1, size, sort, searchCriteria, model);
         } catch (Exception e) {
             log.error("Error fetching insurance plans: {}", e.getMessage(), e);
             model.addAttribute("error", "An error occurred while fetching insurance plans. Please try again.");
@@ -80,25 +80,42 @@ public class InsuranceController {
 
     private String processPlansRequest(String zipCode, int page, int size,
             String sort, PlanSearchCriteria searchCriteria, Model model) {
+        // Get all plans
         List<InsurancePlan> allPlans = insuranceService.getInsurancePlans(zipCode, Year.now().getValue(),
-                searchCriteria);
+                searchCriteria, 0, Integer.MAX_VALUE, sort);
 
         if (allPlans.isEmpty()) {
             model.addAttribute("error", "No plans found for this ZIP code.");
             return "index";
         }
 
+        // Calculate total pages
+        int totalPlans = allPlans.size();
+        int totalPages = (totalPlans + size - 1) / size;
+
+        // Get paginated subset
+        int start = page * size;
+        int end = Math.min(start + size, totalPlans);
+        List<InsurancePlan> pagedPlans = allPlans.subList(start, end);
+
         if (StringUtils.hasText(sort)) {
-            sortPlans(allPlans, sort);
+            sortPlans(pagedPlans, sort);
         }
 
-        addPaginationAttributes(model, allPlans, page, size);
+        // Format plan names
+        pagedPlans.forEach(plan -> plan.setName(planNameFormatter.formatPlanName(plan.getName())));
+
+        // Add attributes to model
+        model.addAttribute("plans", pagedPlans);
+        model.addAttribute("currentPage", page + 1);
+        model.addAttribute("pageSize", size);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalPlans", totalPlans);
         model.addAttribute("searchCriteria", searchCriteria);
         model.addAttribute("sort", sort);
 
-        allPlans.forEach(plan -> plan.setName(planNameFormatter.formatPlanName(plan.getName())));
-
-        model.addAttribute("plans", allPlans);
+        log.debug("Pagination info - Total plans: {}, Page size: {}, Total pages: {}, Current page: {}",
+                totalPlans, size, totalPages, page + 1);
 
         return "plans";
     }
@@ -136,18 +153,6 @@ public class InsuranceController {
                     Comparator.nullsLast(Double::compareTo));
             default -> null;
         };
-    }
-
-    private void addPaginationAttributes(Model model, List<InsurancePlan> allPlans, int page, int size) {
-        int totalPlans = allPlans.size();
-        int totalPages = (int) Math.ceil((double) totalPlans / size);
-        int start = Math.min(page * size, totalPlans);
-        int end = Math.min(start + size, totalPlans);
-
-        model.addAttribute("plans", allPlans.subList(start, end));
-        model.addAttribute("currentPage", page);
-        model.addAttribute("pageSize", size);
-        model.addAttribute("totalPages", totalPages);
     }
 
     private String handleStateMarketplaceError(String zipCode, Model model) {
