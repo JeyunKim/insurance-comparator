@@ -234,7 +234,8 @@
                                 <button 
                                     th:data-plan-id="${plan.planId}"
                                     th:data-plan-name="${plan.name}"
-                                    onclick="togglePlanSelection(this.dataset.planId, this.dataset.planName)"
+                                    th:data-insurance-company="${plan.insuranceCompany}"
+                                    onclick="togglePlanSelection(this.dataset.planId, this.dataset.planName, this.dataset.insuranceCompany)"
                                     class="compare-btn"
                                     style="padding: 6px 12px; 
                                            background: transparent;
@@ -359,42 +360,33 @@
     </script>
 
     <script>
-        // Change the selected plans info to a structure that can be used to display the plan names
-        const selectedPlansInfo = JSON.parse(localStorage.getItem('selectedPlansInfo') || '{}');
-        const selectedPlans = new Set(Object.keys(selectedPlansInfo));
+        const MAX_PLANS = 3;
+        const selectedPlans = new Set();
+        const selectedPlansInfo = {};
         const compareButton = document.getElementById('compareButton');
         const selectedPlansContainer = document.getElementById('selectedPlans');
-        const MAX_PLANS = 3;
 
-        // Initialize the UI based on stored selections
-        document.addEventListener('DOMContentLoaded', function() {
-            // Update compare button state
-            compareButton.disabled = selectedPlans.size < 2;
-            
-            // Restore selected plan chips
-            selectedPlans.forEach(planId => {
-                const planName = selectedPlansInfo[planId];
-                if (planName) {
-                    const btn = document.querySelector(`button[data-plan-id="${planId}"]`);
-                    if (btn) {
-                        btn.style.background = '#4CAF50';
-                        btn.style.color = 'white';
-                        btn.style.borderColor = '#4CAF50';
-                    }
-                    addSelectedPlanChip(planId, planName);
+        // Load saved selections from localStorage
+        const savedPlansInfo = localStorage.getItem('selectedPlansInfo');
+        if (savedPlansInfo) {
+            const savedInfo = JSON.parse(savedPlansInfo);
+            Object.entries(savedInfo).forEach(([planId, info]) => {
+                selectedPlans.add(planId);
+                selectedPlansInfo[planId] = info;
+                addSelectedPlanChip(planId, info.name);
+                
+                const btn = document.querySelector(`button[data-plan-id="${planId}"]`);
+                if (btn) {
+                    btn.style.background = '#4CAF50';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = '#4CAF50';
                 }
             });
+        }
 
-            // Update all button states
-            document.querySelectorAll('.compare-btn').forEach(btn => {
-                if (!selectedPlans.has(btn.dataset.planId) && selectedPlans.size >= MAX_PLANS) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                }
-            });
-        });
+        compareButton.disabled = selectedPlans.size < 2;
 
-        function togglePlanSelection(planId, planName) {
+        function togglePlanSelection(planId, planName, insuranceCompany) {
             const btn = document.querySelector(`button[data-plan-id="${planId}"]`);
             
             if (selectedPlans.has(planId)) {
@@ -409,7 +401,16 @@
                 }
             } else if (selectedPlans.size < MAX_PLANS) {
                 selectedPlans.add(planId);
-                selectedPlansInfo[planId] = planName;
+                selectedPlansInfo[planId] = {
+                    name: planName,
+                    insuranceCompany: insuranceCompany,
+                    searchCriteria: {
+                        zipCode: /*[[${param.zipCode}]]*/ '',
+                        income: /*[[${param.income}]]*/ '',
+                        age: /*[[${param.age}]]*/ '',
+                        // 기타 검색 조건들...
+                    }
+                };
                 addSelectedPlanChip(planId, planName);
                 if (btn) {
                     btn.style.background = '#4CAF50';
@@ -421,8 +422,15 @@
                 return;
             }
             
-            // Save to localStorage with plan names
+            // Save to localStorage and session
             localStorage.setItem('selectedPlansInfo', JSON.stringify(selectedPlansInfo));
+            fetch('/api/session/selectedPlans', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(selectedPlansInfo)
+            });
             
             compareButton.disabled = selectedPlans.size < 2;
             
@@ -467,10 +475,18 @@
             selectedPlansContainer.appendChild(chip);
         }
 
-        compareButton.addEventListener('click', () => {
-            const planIds = Array.from(selectedPlans).join(',');
-            window.location.href = `/plans/compare?ids=${planIds}`;
-        });
+        function compareSelectedPlans() {
+            if (selectedPlans.size >= 2) {
+                const ids = Array.from(selectedPlans).join(',');
+                const names = Array.from(selectedPlans).map(id => selectedPlansInfo[id].name).join(',');
+                const companies = Array.from(selectedPlans).map(id => selectedPlansInfo[id].insuranceCompany).join(',');
+                const searchParams = selectedPlansInfo[Array.from(selectedPlans)[0]].searchCriteria;
+                
+                window.location.href = `/plans/compare?ids=${ids}&names=${names}&companies=${companies}&zipCode=${searchParams.zipCode}&income=${searchParams.income}&age=${searchParams.age}`;
+            }
+        }
+
+        compareButton.addEventListener('click', compareSelectedPlans);
 
         // Clear selections when leaving compare page
         window.addEventListener('beforeunload', function(e) {

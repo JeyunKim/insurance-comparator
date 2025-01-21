@@ -244,8 +244,6 @@ public class HealthcareGovClient {
                     new HttpEntity<>(headers),
                     String.class);
 
-            log.info("API Response for plan {}: {}", planId, response.getBody());
-
             ObjectMapper mapper = new ObjectMapper();
             InsurancePlanDetails details = mapper.readValue(response.getBody(), InsurancePlanDetails.class);
             details.setPlanName(planName);
@@ -258,5 +256,9 @@ public class HealthcareGovClient {
                     planId, e.getMessage(), baseUrl + "/api/v1/plans/" + planId);
             throw new RuntimeException("Failed to fetch plan details", e);
         }
+    }
+
+    public InsurancePlanDetails getPlanById(String planId) {
+        return getPlanById(planId, null, null);
     }
 }

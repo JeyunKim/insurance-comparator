@@ -50,7 +50,7 @@
     </th:block>
 </head>
 <body>
-    <!-- 정렬 가능한 헤더 컬럼 fragment -->
+    <!-- sortable header column fragment -->
     <th th:fragment="sortableHeader(fieldName, displayName)">
         <div class="sort-column">
             <span th:text="${displayName}"></span>
@@ -75,7 +75,7 @@
         </div>
     </th>
 
-    <!-- 일반 헤더 컬럼 fragment -->
+    <!-- general header column fragment -->
     <th th:fragment="plainHeader(displayName)">
         <div class="sort-column">
             <span th:text="${displayName}"></span>

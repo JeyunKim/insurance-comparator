@@ -2,6 +2,7 @@ package com.insurance.controller;
 
 import java.time.Year;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -183,5 +184,26 @@ public class InsuranceController {
         planDetails.setPlanName(planNameFormatter.formatPlanName(planDetails.getPlanName()));
         model.addAttribute("plan", planDetails);
         return "plan-details";
+    }
+
+    @GetMapping("/plans/compare")
+    public String comparePlans(@RequestParam String ids,
+            @RequestParam String names,
+            @RequestParam String companies,
+            Model model) {
+        List<String> planIds = Arrays.asList(ids.split(","));
+        List<String> planNames = Arrays.asList(names.split(","));
+        List<String> insuranceCompanies = Arrays.asList(companies.split(","));
+
+        List<InsurancePlanDetails> plans = new ArrayList<>();
+        for (int i = 0; i < planIds.size(); i++) {
+            plans.add(healthcareGovClient.getPlanById(
+                    planIds.get(i),
+                    planNames.get(i),
+                    insuranceCompanies.get(i)));
+        }
+
+        model.addAttribute("plans", plans);
+        return "compare-plans";
     }
 }
